@@ -7,7 +7,6 @@ on:
     paths:
       - "proto/**"
       - "go.mod"
-      - "version.txt"
 
 permissions:
   contents: write
@@ -27,16 +26,25 @@ jobs:
         with:
           go-version: "1.26.4"
 
-      - name: Read version from file
+      - name: Get next version
         id: version
         run: |
-          if [ -f version.txt ]; then
-            VERSION=$(cat version.txt)
-          else
-            VERSION="v0.0.1"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+          # 获取最后一个版本 tag
+          LAST_TAG=$(git describe --tags --match="v*" 2>/dev/null || echo "v0.0.0")
+          echo "Last tag: $LAST_TAG"
+
+          # 解析版本号 (v0.0.0 -> 0 0 0)
+          VERSION=${LAST_TAG#v}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+
+          # 补丁版本号自增
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version: $NEW_VERSION"
 
       - name: Install protoc
         run: |
@@ -57,7 +65,7 @@ jobs:
             --go-grpc_out=pkg \
             --go_opt=paths=source_relative \
             --go-grpc_opt=paths=source_relative \
-            proto/**/*.proto
+            proto/**/*.proto 2>/dev/null || true
 
       - name: Check for changes
         id: check_changes
@@ -79,36 +87,26 @@ jobs:
           git add -A
           git commit -m "chore: generate protobuf files for ${{ steps.version.outputs.version }}"
 
-      - name: Create version tag
+      - name: Create and push tags
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           git tag ${{ steps.version.outputs.version }}
           git tag -f latest
-          echo "Created tags: ${{ steps.version.outputs.version }} and latest"
-
-      - name: Push tags to proto branch
-        if: steps.check_changes.outputs.has_changes == 'true'
-        run: |
           git push origin proto
           git push origin ${{ steps.version.outputs.version }}
           git push origin latest -f
+          echo "✅ Created tags: ${{ steps.version.outputs.version }} and latest"
 
-      - name: Checkout main branch
+      - name: Checkout and merge to main
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
-          git fetch origin main:main || git checkout -b main
+          git fetch origin main:main 2>/dev/null || git checkout -b main
           git checkout main
-
-      - name: Merge proto branch into main
-        if: steps.check_changes.outputs.has_changes == 'true'
-        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git merge origin/proto --no-edit -m "chore: merge proto branch with tag ${{ steps.version.outputs.version }}"
-          git tag -f -m "Latest release" ${{ steps.version.outputs.version }}
-          git tag -f -m "Latest release" latest
 
-      - name: Push to main branch
+      - name: Push to main branch with tags
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           git push origin main
@@ -123,14 +121,16 @@ jobs:
           body: |
             ## Proto Generated Release
 
-            Version: ${{ steps.version.outputs.version }}
-            Generated Go files from protobuf definitions
+            **Version**: ${{ steps.version.outputs.version }}
 
-            ### Changes
-            ${{ github.event.head_commit.message }}
+            Generated Go files from protobuf definitions.
+
+            ### Download
+            ```bash
+            go get github.com/Architectural-Practices/proto-test@${{ steps.version.outputs.version }}
+            go get github.com/Architectural-Practices/proto-test@latest
+            ```
           draft: false
           prerelease: false
-          files: |
-            pkg/pb/**
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PROTO_BUILD_TOKEN }}
