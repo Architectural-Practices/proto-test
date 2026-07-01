@@ -1,0 +1,136 @@
+name: Proto Build and Release
+
+on:
+  push:
+    branches:
+      - proto
+    paths:
+      - "proto/**"
+      - "go.mod"
+      - "version.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout proto branch
+        uses: actions/checkout@v4
+        with:
+          ref: proto
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.26.4"
+
+      - name: Read version from file
+        id: version
+        run: |
+          if [ -f version.txt ]; then
+            VERSION=$(cat version.txt)
+          else
+            VERSION="v0.0.1"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+
+      - name: Install Go protoc plugins
+        run: |
+          go install github.com/grpc/grpc-go/cmd/protoc-gen-go-grpc@latest
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+      - name: Generate Go files from proto
+        run: |
+          mkdir -p pkg/pb
+          protoc \
+            --go_out=pkg \
+            --go-grpc_out=pkg \
+            --go_opt=paths=source_relative \
+            --go-grpc_opt=paths=source_relative \
+            proto/**/*.proto
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes generated"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in proto compilation"
+            git diff --stat
+          fi
+
+      - name: Commit generated files to proto branch
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: generate protobuf files for ${{ steps.version.outputs.version }}"
+
+      - name: Create version tag
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git tag ${{ steps.version.outputs.version }}
+          git tag -f latest
+          echo "Created tags: ${{ steps.version.outputs.version }} and latest"
+
+      - name: Push tags to proto branch
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git push origin proto
+          git push origin ${{ steps.version.outputs.version }}
+          git push origin latest -f
+
+      - name: Checkout main branch
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git fetch origin main:main || git checkout -b main
+          git checkout main
+
+      - name: Merge proto branch into main
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git merge origin/proto --no-edit -m "chore: merge proto branch with tag ${{ steps.version.outputs.version }}"
+          git tag -f -m "Latest release" ${{ steps.version.outputs.version }}
+          git tag -f -m "Latest release" latest
+
+      - name: Push to main branch
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git push origin main
+          git push origin ${{ steps.version.outputs.version }}
+          git push origin latest -f
+
+      - name: Create Release
+        if: steps.check_changes.outputs.has_changes == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          body: |
+            ## Proto Generated Release
+
+            Version: ${{ steps.version.outputs.version }}
+            Generated Go files from protobuf definitions
+
+            ### Changes
+            ${{ github.event.head_commit.message }}
+          draft: false
+          prerelease: false
+          files: |
+            pkg/pb/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
