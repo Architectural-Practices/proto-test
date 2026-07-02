@@ -55,7 +55,7 @@ jobs:
       - name: Generate Go files from proto
         run: |
           mkdir -p pkg/pb
-          for f in proto/**/*.proto; do
+          find proto -name "*.proto" | while read -r f; do
             trpc create --protofile="$f" --output=pkg/pb --rpconly --force --lang=go
           done
 
