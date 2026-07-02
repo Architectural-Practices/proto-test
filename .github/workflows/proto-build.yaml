@@ -68,14 +68,15 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          if git diff --quiet; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "No changes generated"
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "Changes detected in proto compilation"
-            git diff --stat
-          fi
+          # if git diff --quiet; then
+          #   echo "has_changes=false" >> $GITHUB_OUTPUT
+          #   echo "No changes generated"
+          # else
+          #   echo "has_changes=true" >> $GITHUB_OUTPUT
+          #   echo "Changes detected in proto compilation"
+          #   git diff --stat
+          # fi
+          echo "has_changes=true" >> $GITHUB_OUTPUT
 
       - name: Commit, tag and push
         if: steps.check_changes.outputs.has_changes == 'true'
