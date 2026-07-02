@@ -73,39 +73,36 @@ jobs:
           fi
           ls pkg/pb/
 
-      - name: Commit generated files to proto branch
+      - name: Commit generated files to main branch
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
+          # 保存生成的文件到临时目录
+          mkdir -p /tmp/proto-gen
+          cp -r pkg /tmp/proto-gen/
+
+          # 切换到 main 分支
+          git checkout main
+
+          # 恢复生成的文件
+          cp -r /tmp/proto-gen/pkg .
+
+          # 提交到 main
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add pkg/
           git commit -m "chore: generate protobuf files for ${{ steps.version.outputs.version }}"
 
-      - name: Create and push tags
-        if: steps.check_changes.outputs.has_changes == 'true'
-        run: |
+          # 打 tag
           git tag ${{ steps.version.outputs.version }}
           git tag -f latest
-          git push origin proto
-          git push origin ${{ steps.version.outputs.version }}
-          git push origin latest -f
-          echo "✅ Created tags: ${{ steps.version.outputs.version }} and latest"
 
-      - name: Checkout and merge to main
-        if: steps.check_changes.outputs.has_changes == 'true'
-        run: |
-          git fetch origin main:main 2>/dev/null || git checkout -b main
-          git checkout main
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git merge origin/proto --no-edit -m "chore: merge proto branch with tag ${{ steps.version.outputs.version }}"
-
-      - name: Push to main branch with tags
+      - name: Push main branch and tags
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           git push origin main
           git push origin ${{ steps.version.outputs.version }}
           git push origin latest -f
+          echo "✅ Pushed main branch and tags: ${{ steps.version.outputs.version }}, latest"
 
       - name: Create Release
         if: steps.check_changes.outputs.has_changes == 'true'
