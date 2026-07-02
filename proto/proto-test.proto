@@ -4,14 +4,15 @@ package trpc.proto.test;
 
 option go_package = "architectural-practices/proto-management/proto-test/pkg/pb";
 
-service Greeter {
-  rpc Hello (HelloRequest) returns (HelloReply) {}
-}
-
 message HelloRequest {
-  string msg = 1;
+  string openid = 1;
 }
 
 message HelloReply {
   string msg = 1;
+}
+
+
+service Greeter {
+  rpc Hello (HelloRequest) returns (HelloReply) {}
 }
