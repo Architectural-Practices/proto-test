@@ -12,7 +12,17 @@ message HelloRsp {
   string msg = 1;
 }
 
+message TestReq {
+
+}
+
+message TestRsp{
+
+}
+
 
 service Hello {
   rpc Hello (HelloReq) returns (HelloRsp) {}
+  rpc Test(TestReq) returns (TestRsp) {}
 }
+
