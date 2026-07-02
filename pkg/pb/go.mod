@@ -1,8 +1,9 @@
 module architectural-practices/proto-management/proto-test/pkg/pb
 
-go 1.23
+go 1.23.0
 
 require (
+	go.uber.org/mock v0.6.0
 	google.golang.org/protobuf v1.36.11
 	trpc.group/trpc-go/trpc-go v1.0.4
 )
@@ -33,7 +34,7 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
