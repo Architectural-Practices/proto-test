@@ -54,8 +54,9 @@ jobs:
 
       - name: Generate Go files from proto
         run: |
+          shopt -s globstar
           mkdir -p pkg/pb
-          find proto -name "*.proto" | while read -r f; do
+          for f in proto/**/*.proto; do
             trpc create --protofile="$f" --output=pkg/pb --rpconly --force --lang=go
           done
 
@@ -70,6 +71,7 @@ jobs:
             echo "Changes detected in proto compilation"
             git diff --stat
           fi
+          ls pkg/pb/
 
       - name: Commit generated files to proto branch
         if: steps.check_changes.outputs.has_changes == 'true'
