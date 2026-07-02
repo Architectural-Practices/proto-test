@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package trpc.proto.test;
 
-option go_package = "proto-test";
+option go_package = "hello-test";
 
 message HelloReq {
   string openid = 1;
