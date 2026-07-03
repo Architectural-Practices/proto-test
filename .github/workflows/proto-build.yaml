@@ -65,7 +65,11 @@ jobs:
           rm -rf pkg
           mkdir -p pkg/pb
           for f in proto/**/*.proto; do
-            trpc create --protofile="$f" --output=pkg/pb --rpconly --force --lang=go
+            name=$(basename "$f" .proto)
+            outdir="pkg/pb/$name"
+            mkdir -p "$outdir"
+            echo "Generating $f -> $outdir"
+            trpc create --protofile="$f" --output="$outdir" --rpconly --force --lang=go
           done
 
       - name: Check for changes
