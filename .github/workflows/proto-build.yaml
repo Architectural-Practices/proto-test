@@ -69,7 +69,7 @@ jobs:
             outdir="pkg/pb/$name"
             mkdir -p "$outdir"
             echo "Generating $f -> $outdir"
-            trpc create --protofile="$f" --output="$outdir" --rpconly --force --lang=go
+            trpc create --protofile="$f" --output="$outdir" --rpconly=true --nogomod=true --force --lang=go
           done
 
       - name: Check for changes
