@@ -27,40 +27,28 @@ jobs:
         with:
           go-version: "1.26.4"
 
-      # - name: Get next version
-      #   id: version
-      #   run: |
-      #     # 获取最后一个版本 tag
-      #     LAST_TAG=$(git describe --tags --match="v*" 2>/dev/null || echo "v0.0.0")
-      #     echo "Last tag: $LAST_TAG"
+      - name: Fetch all tags
+        run: git fetch origin --tags -f
 
-      #     # 解析版本号 (v0.0.0 -> 0 0 0)
-      #     VERSION=${LAST_TAG#v}
-      #     MAJOR=$(echo $VERSION | cut -d. -f1)
-      #     MINOR=$(echo $VERSION | cut -d. -f2)
-      #     PATCH=$(echo $VERSION | cut -d. -f3)
-
-      #     # 补丁版本号自增
-      #     NEW_PATCH=$((PATCH + 1))
-      #     NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
-
-      #     echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-      #     echo "Next version: $NEW_VERSION"
-
-
-      - name: Bump version
+      - name: Get next version
         id: version
-        uses: phips28/gh-action-bump-version@master
-        with:
-          tag-prefix: 'v'
-          bump-type: patch
-
-      - name: Get version tag
-        id: version_tag
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0)
-          echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
-          echo "Version tag: ${LATEST_TAG}"
+          # 获取最后一个版本 tag
+          LAST_TAG=$(git describe --tags --match="v*" 2>/dev/null || echo "v0.0.0")
+          echo "Last tag: $LAST_TAG"
+
+          # 解析版本号 (v0.0.0 -> 0 0 0)
+          VERSION=${LAST_TAG#v}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+
+          # 补丁版本号自增
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version: $NEW_VERSION"
 
       - name: Install tRPC CLI
         run: |
@@ -99,29 +87,29 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "chore: generate protobuf files for ${{ steps.version_tag.outputs.version }}"
-          git tag ${{ steps.version_tag.outputs.version }}
+          git commit -m "chore: generate protobuf files for ${{ steps.version.outputs.version }}"
+          git tag ${{ steps.version.outputs.version }}
           git tag -f latest
           git push -f origin pb
-          git push origin ${{ steps.version_tag.outputs.version }}
+          git push origin ${{ steps.version.outputs.version }}
           git push origin latest -f
-          echo "✅ Pushed pb branch and tags: ${{ steps.version_tag.outputs.version }}, latest"
+          echo "✅ Pushed pb branch and tags: ${{ steps.version.outputs.version }}, latest"
 
       - name: Create Release
         if: steps.check_changes.outputs.has_changes == 'true'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.version_tag.outputs.version }}
+          tag_name: ${{ steps.version.outputs.version }}
           body: |
             ## Proto Generated Release
 
-            **Version**: ${{ steps.version_tag.outputs.version }}
+            **Version**: ${{ steps.version.outputs.version }}
 
             Generated Go files from protobuf definitions.
 
             ### Download
             ```bash
-            go get github.com/Architectural-Practices/proto-test@${{ steps.version_tag.outputs.version }}
+            go get github.com/Architectural-Practices/proto-test@${{ steps.version.outputs.version }}
             go get github.com/Architectural-Practices/proto-test@latest
             ```
           draft: false
