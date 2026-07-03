@@ -34,7 +34,7 @@ jobs:
         id: version
         run: |
           # 获取最后一个版本 tag
-          LAST_TAG=$(git describe --tags --match="v*" 2>/dev/null || echo "v0.0.0")
+          LAST_TAG=$(git tag -l --sort=-version:refname "v*" | head -1 || echo "v0.0.0")
           echo "Last tag: $LAST_TAG"
 
           # 解析版本号 (v0.0.0 -> 0 0 0)
